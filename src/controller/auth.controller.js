@@ -1,10 +1,11 @@
 const userModel = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const tokenBlacklistModel = require("../models/blocklist.model");
 
 
 async function registerUserController(req, res) {
-    const {username, email, password} = req.body;
+    const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
         return res.status(400).json({
@@ -58,7 +59,7 @@ async function loginUserController(req, res){
 
     const {email, password} = req.body;
 
-    const user = userModel.findOne({email});
+    const user = await userModel.findOne({email});
 
     if (!user) {
         return res.status(400).json({
@@ -66,7 +67,7 @@ async function loginUserController(req, res){
         })
     }
 
-    const  isPasswordValid = bcrypt.compare(password, user.password)
+    const isPasswordValid = await bcrypt.compare(password, user.password)
 
     if(!isPasswordValid){
         return res.status(400).json({
@@ -92,4 +93,38 @@ async function loginUserController(req, res){
     })
 }
 
-module.exports = {registerUserController, loginUserController}
+async function logoutUserController(req, res) {
+  const token = req.cookies.token;
+
+  if (token) {
+    await tokenBlacklistModel.create({ token });
+  }
+
+  res.clearCookie("token");
+
+  res.status(200).json({
+    message: "user loged out successfully ",
+  });
+}
+
+async function getMeController(req, res) {
+  const user = await userModel.findById(req.user.id);
+
+  console.log(user);
+  
+  res.status(201).json({
+    message: "user fech succesfully",
+    username: user.username,
+    email: user.email
+
+  })
+
+}
+
+module.exports = {
+  registerUserController,
+  loginUserController,
+  logoutUserController,
+  getMeController
+  
+};
